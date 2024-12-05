@@ -11,6 +11,35 @@ class FormuleManager
     this.tabCandidati = tabCandidati;
   }
 
+  //methond that calclulate the column letter
+  getColumnLetter(colIndex: number)
+  {
+    let letter = '';
+
+    while (colIndex > 0)
+    {
+      let remainder = (colIndex - 1) % 26;
+
+      letter = String.fromCharCode(65 + remainder) + letter;
+      colIndex = Math.floor((colIndex - 1) / 26);
+    }
+
+    return letter;
+  }
+
+  //method that calculate the previus colum letter
+  getPreviousColumnLetter(i: number, userFormula: string): string
+  {
+    if(userFormula === "MULTI")
+    {
+      return this.getColumnLetter(i - 1);
+    }
+    else
+    {
+      return this.getColumnLetter(i);
+    }
+  }
+
   //FORSE NON VA QUI
   //method that calculates the previous cell depending on the formula type
   calculatePreviousCell(i: number, r: number, userFormula: string): string
@@ -18,14 +47,7 @@ class FormuleManager
     let previousColumn = "";
     let previousCell = "";
 
-    if(userFormula === "MULTI")
-    {
-      previousColumn = String.fromCharCode(65 + i - 2); //convert from index to column letter
-    }
-    else
-    {
-      previousColumn = String.fromCharCode(65 + i - 1); 
-    }
+    previousColumn = this.getPreviousColumnLetter(i, userFormula); //convert the index i to the previus column letter
 
     previousCell = previousColumn + r;
     return previousCell;
