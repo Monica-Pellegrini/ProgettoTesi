@@ -56,8 +56,8 @@ class FormuleManager
         i++;
       }
 
-      startRange = parseInt(startRange.toString()) + 4;
-      endRange = parseInt(endRange.toString()) + 4; //I have to take into account the fact that we have removed the header and that the arrays start from 0
+      startRange = parseInt(startRange.toString()) + 2;
+      endRange = parseInt(endRange.toString()) + 2; //I have to take into account the fact that we have removed the header and that the arrays start from 0
       indexsRange.shift(); //I delete the index I just created the formula for
 
       formula = "INDEX(" + sheetNamePunteggi + "!C$" + startRange + ":C$" + endRange + ", MATCH(" + previousCell + "," + sheetNamePunteggi + "!D$" + startRange + ":D$" + endRange + "," + "1))";

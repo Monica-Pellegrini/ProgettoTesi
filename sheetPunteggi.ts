@@ -16,7 +16,6 @@ class SheetPunteggi extends SpreadsheetManager
   {
     let rawData = this.getData();
 
-    rawData.splice(0, 2); //remove the first two lines to create the tabPunteggi
     this.header = rawData.shift() as string[]; //get the header line
     this.punteggiData = rawData;
   }
