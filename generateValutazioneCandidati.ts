@@ -92,7 +92,7 @@ class GenerateValutazioneCandidati
     {
       if(tabPunteggi[i][1] !== "" && !tabPunteggi[i][1].startsWith("-"))
       {
-        formulas.push(tabPunteggi[i][0]); //save the value of the formula
+        formulas.push(tabPunteggi[i][0].trim()); //save the value of the formula
       }
       else if(!tabPunteggi[i][1].startsWith("-"))//reached the end of the section
       {
@@ -114,7 +114,7 @@ class GenerateValutazioneCandidati
     {
       if(tabPunteggi[i][1] !== "" && !tabPunteggi[i][1].startsWith("-")) 
       {
-        if(tabPunteggi[i][0] === "RANGE")
+        if(tabPunteggi[i][0].trim() === "RANGE")
         {
           //need to figure out where the column range starts from
           for(var a = 0; a < numRow; a++)
