@@ -69,7 +69,7 @@ class SpreadsheetCreator
         throw new Error("Lo Sheet non è ancora stato creato.");
     }
 
-    for(let i = 3; i < headers.length; i++)
+    for(let i = 4; i < headers.length; i++)
     {
       if(!headers[i].startsWith("Punti") && !headers[i].startsWith("Tot"))
       {

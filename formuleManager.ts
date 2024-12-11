@@ -188,19 +188,19 @@ class FormuleManager
     for(let r = 2; r <= this.numRow + 1; r++)
     {
       let formula = "=SUM(";
-
+  
       let cellsTotalSections = columnsMax.map((colIndex) => 
       {
         //returns A1 format notation of the cells
         return this.sheetManager.getRange(r, colIndex).getA1Notation();
       });
-
-
+  
+  
       formula += cellsTotalSections.join("+") + ")";
-
+  
       if(this.tabCandidati[r-2][0] !== "")
       {
-        this.sheetManager.getRange(r, 2).setFormula(formula);
+        this.sheetManager.getRange(r, 3).setFormula(formula);
       }
     }
   }
@@ -211,12 +211,12 @@ class FormuleManager
     //In the sufficiente column I insert a formula that checks the score in the PunteggioTotale cell and tells me whether the candidate is sufficient or not
     for(let r = 2; r <= this.numRow +1; r++)
     {
-      let checkCell = "B"+r;
+      let checkCell = "C" + r;
       let formula = "=IF(" + checkCell + "<35;\"NO!!!\";\"SÍ\")";
-
+  
       if(this.tabCandidati[r-2][0] !== "")
       {
-        this.sheetManager.getRange(r, 3).setFormula(formula);
+        this.sheetManager.getRange(r, 4).setFormula(formula);
       }
     }
   }
