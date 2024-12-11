@@ -20,7 +20,7 @@ class GenerateValutazioneCandidati
   //method that generates the Valutazione Candidati header
   generateHeader(tabPunteggi: any[][]): string[]
   {
-    let headers = ["NomeCandidato", "PunteggioTotale", "Sufficiente"]; //add the first 3 
+    let headers = ["NomeCandidato", "Insegnamento", "PunteggioTotale", "Sufficiente"]; //add the first 4
     let count = 0;
 
     for(let i = 1; i < tabPunteggi.length; i++)
@@ -30,12 +30,7 @@ class GenerateValutazioneCandidati
       {
         headers.push(tabPunteggi[i][1]);
 
-        //if it is an entry in which a number must be inserted, a supporting column is needed 
-        if(tabPunteggi[i][0] === "MULTI")
-        {
-          headers.push("Voce");
-        }
-
+        headers.push("Voce");
         headers.push("Punti " + tabPunteggi[i][1]);
       }
       else if(!tabPunteggi[i][1].startsWith("-")) //I have reached the end of the section

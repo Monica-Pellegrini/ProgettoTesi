@@ -30,14 +30,7 @@ class FormuleManager
   //method that calculate the previus colum letter
   getPreviousColumnLetter(i: number, userFormula: string): string
   {
-    if(userFormula === "MULTI")
-    {
-      return this.getColumnLetter(i - 1);
-    }
-    else
-    {
-      return this.getColumnLetter(i);
-    }
+    return this.getColumnLetter(i - 1);
   }
 
   //FORSE NON VA QUI
