@@ -129,10 +129,24 @@ class GenerateValutazioneCandidati
     return indicesRange;
   }
 
+  checkMaxScore(maxArray: number[]): void
+  {
+    let maxScore = this.punteggiData.getMaximumScore(); //get the maximum score possible 
+    let somma = maxArray.reduce(function(total, num) {
+      return total + num;
+    }, 0);
+
+    if(somma !== maxScore)
+    {
+      throw new Error("Errore: la il valore massimo dei punti ottenibili dal candidato inserito nella tabella punteggi: " + maxScore + " non corrisponde alla somma dei valori massimi delle categorie che è: " + somma +
+      " ricontrollare e poi rieseguire il servizio");
+    }
+  }
+
   generateValutazione(): void
   {
-    this.spreadsheet.createFileValutazione();
     const tabPunteggi = this.punteggiData.getPunteggiData(); //I read and save the data from the score table
+    const minimum = this.punteggiData.getMinimumScore(); //Get the value of the minimum score accepted 
     const tabCandidati = this.candidatiData.getCandidatiData(); //I read and save the data from the candidate table
     const headers = this.generateHeader(tabPunteggi); //generate the headers for the ValutazioneCandidati
     const max = this.getMax(tabPunteggi); //save the max value of each section
@@ -140,15 +154,19 @@ class GenerateValutazioneCandidati
     const formulas = this.getFormulas(tabPunteggi); //saves the values of the formulas
     const indiciRange = this.getIndicesRange(tabPunteggi, tabCandidati);
     let columnsMax = [];
+
+    this.checkMaxScore(max); //check if the max score possible is correct based on the sum of max score of each section
+    this.spreadsheet.createFileValutazione(); //create the new speadsheet
     const formuleManager = new FormuleManager(this.spreadsheet, tabCandidati);
 
-    this.spreadsheet.setValori(1, 1, 1, headers.length, [headers]);
-    this.spreadsheet.setValori(2, 1, tabCandidati.length, tabCandidati[0].length, tabCandidati)
-
     
+
+    this.spreadsheet.setValori(1, 1, 1, headers.length, [headers]);
+    this.spreadsheet.setValori(2, 1, tabCandidati.length, tabCandidati[0].length, tabCandidati); //insert name of the candidates and the subject they apply for in the Valutazione Candidati
+
     columnsMax = formuleManager.insertCellsTotal(headers, max);
     formuleManager.insertTotalScore(columnsMax);
-    formuleManager.insertValuation();
+    formuleManager.insertValuation(minimum);
     formuleManager.insertPointCells(headers, formulas, scores, indiciRange, tabPunteggi, this.namePunteggiSheet);
 
     this.spreadsheet.setBackground(headers, tabCandidati);
