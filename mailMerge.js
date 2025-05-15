@@ -1,517 +1,687 @@
-//rimane da fare il controllo degli errori
-var i, j, k, h;
-
-//stile titolo
-const stileTitolo = {};
-stileTitolo[DocumentApp.Attribute.BOLD] = true;
-stileTitolo[DocumentApp.Attribute.HORIZONTAL_ALIGNMENT] = DocumentApp.HorizontalAlignment.JUSTIFY;
-stileTitolo[DocumentApp.Attribute.FONT_FAMILY] = 'Arial';
-stileTitolo[DocumentApp.Attribute.FONT_SIZE] = 11;
-stileTitolo[DocumentApp.Attribute.LINE_SPACING] = 1;
-
-//stile corpo
-const stileBody = {};
-stileBody[DocumentApp.Attribute.BOLD] = false;
-stileBody[DocumentApp.Attribute.HORIZONTAL_ALIGNMENT] = DocumentApp.HorizontalAlignment.JUSTIFY;
-stileBody[DocumentApp.Attribute.FONT_FAMILY] = 'Arial';
-stileBody[DocumentApp.Attribute.FONT_SIZE] = 11;
-stileBody[DocumentApp.Attribute.LINE_SPACING] = 1;
-
-//stile tabella
-const stileTab = {};
-stileTab[DocumentApp.Attribute.HORIZONTAL_ALIGNMENT] = DocumentApp.HorizontalAlignment.CENTER;
-
-//classe che estrae i valori dei fogli
-class ValueRetriver{
-  
-  constructor(){
-    this.sheet;
-    this.spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-  }
-
-  getVal(sheetName){
-    this.sheet = this.spreadsheet.getSheetByName(sheetName); 
-    return this.sheet.getDataRange().getDisplayValues();
-  }
-
+function onOpen(){
+  var menu = SpreadsheetApp.getUi().createMenu("Funzioni Aggiuntive");
+  menu.addItem("Genera Verbale", "generaVerbale");
+  menu.addToUi();
 }
 
-
-//classe candidato
-class Candidato{
-
-  constructor(tabVal, i){
-    this.nome = tabVal[i][0].toString();
-    this.insegnamento = tabVal[i][1].toString();
-    this.punteggioTot = tabVal[i][2].valueOf();
-
-    this.totCriterio = [];
-    for (k = 4; k < tabVal[0].length; k++){
-      this.s = tabVal[0][k].toString();
-      if(this.s.match("Tot")){
-        this.totCriterio.push(tabVal[i][k].valueOf());
-      }
-    }
-  }
-
-  getNome(){
-    return this.nome;
-  }
-
-  getInsegnamento(){
-    return this.insegnamento;
-  }
-
-  getPunteggioTot(){
-    return this.punteggioTot;
-  }
-
-  getTotCriterio(i){
-    return this.totCriterio[i];
-  }
-
-  getTotCriterioLenght(){
-    return this.totCriterio.length;
+function generaVerbale(){
+  try{
+    var verbale = new VerbalGenerator();
+    verbale.generaVerbale();
+  }catch(e){
+    SpreadsheetApp.getUi().alert("Errore",e,SpreadsheetApp.getUi().ButtonSet.OK);
   }
 }
 
-//classe insegnamento
-class Insegnamento{
+class UserInterface{
+  constructor(){}
 
-  constructor(tabIns, i){
-    this.idCop = tabIns[i][0].toString();
-    this.descrizioneCop = tabIns[i][1].toString();
-    this.ssd = tabIns[i][2].toString();
-    this.oreLezione = tabIns[i][3].toString();  
-  }
-
-  getInsIDCop(){
-    return this.idCop;
-  }
-
-  getInsDescrizioneCop(){
-    return this.descrizioneCop;
-  }
-
-  getInsSSD(){
-    return this.ssd;
-  }
-
-  getInsOreLezione(){
-    return this.oreLezione;
+  makeOutputBox(link, nome){
+    //crea box con link cliccabile
+    var html=Utilities.formatString('<style>input{margin: 3px 0;}</style><h3>%s</h3><a href="%s" target="_blank">%s</a><br />','Link del verbale:',link,nome);
+    var userInterface=HtmlService.createHtmlOutput(html).setHeight(100);
+    SpreadsheetApp.getUi().showModelessDialog(userInterface, "Verbale creato");
   }
 }
 
-//classe commissionario
-class Commissionario{
-  constructor(tabCandidati, i){
-    this.nomeC = tabCandidati[i][0].toString();
-    this.titoloC = tabCandidati[i][1].toString();
-    this.ruoloC = "nulla";
-    if(tabCandidati[i][2][0] !== undefined && tabCandidati[i][2][0] !== " "){
-      this.ruoloC = tabCandidati[i][2].toString();
-    }
-
-  }
-
-  getNomeC(){
-    return this.nomeC;
-  }
-
-  getTitoloC(){
-    return this.titoloC;
-  }
-
-  getRuoloC(){
-    return this.ruoloC;
-  }
-}
-
-//classe che contiene le informazioni da inserire nel verbale
-class DatiVerbale{
+class VerbalGenerator{
 
   constructor(){
-
-    this.v = new ValueRetriver();
-
-
-    //carichiamo i dati dallo sheet DatiVerbale
-    this.tabDati = this.v.getVal("DatiVerbale");
-
-    //carichiamo i dati dallo sheet ElencoInsegnamenti
-    this.tabInsegnamenti = this.v.getVal("ElencoInsegnamenti");
-
-    //carichiamo i dati dallo sheet TabellaPunteggi
-    this.tabPunteggi = this.v.getVal("TabellaPunteggi");
-
-    //carichiamo i dati dallo sheet ValutazioneCandidati corrente
-    this.tabVal = this.v.getVal(SpreadsheetApp.getActiveSpreadsheet().getActiveSheet().getName());
-
-    //carichiamo i dati dallo sheet Commissione
-    this.tabCommissione = this.v.getVal("Commissione");
-
-
-    this.cds = this.tabDati[1][0].toString();
-    this.dataAffissione = this.tabDati[1][1].toString();
-    this.giorno = this.tabDati[1][2].toString();
-    this.oraInizio = this.tabDati[1][3].toString();
-
-    this.insegnamenti = [];
-    for(i = 1; i < this.tabInsegnamenti.length; i++){
-      this.insegnamenti[i-1] = new Insegnamento(this.tabInsegnamenti, i);
-    }
-
-    this.criteri = this.tabPunteggi;
-    this.pMax = this.tabPunteggi[0][1].valueOf();
-    this.pMin = this.tabPunteggi[1][1].valueOf();
-
-    this.candidati = [];
-    for(i = 1; i < this.tabVal.length; i++){
-      this.candidati[i-1] = new Candidato(this.tabVal, i);
-    }
-    
-    this.commissione = [];
-    for(i = 1; i < this.tabCommissione.length; i++){
-      this.commissione[i-1] = new Commissionario(this.tabCommissione, i);
-
-      if(this.commissione[i-1].getRuoloC() === 'segretario'){
-        this.segretario = this.commissione[i-1].getNomeC();
-      }else if(this.commissione[i-1].getRuoloC() === 'presidente'){
-        this.presidente = this.commissione[i-1].getNomeC();        
-      }
-    }
-
+    this.activeSheetName = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet().getName();
+    this.linkTemplate = null;
+    this.initialize()
   }
 
-  getCDS(){
-    return this.cds;
+  initialize(){
+    this.interface = new UserInterface();
+    var sheet = new SheetDatiVerbale();
+    this.linkTemplate = sheet.getTemplateUrl();
   }
 
-  getDataAffissione(){
-    return this.dataAffissione;
-  }
+  generaVerbale(){
 
-  getGiorno(){
-    return this.giorno;
-  }
+    if(this.linkTemplate !== ""){
+      if(this.linkTemplate.includes("https://docs.google.com/document/")){
+        if(this.activeSheetName.includes("ValutazioneCandidati")){
 
-  getOraInizio(){
-    return this.oraInizio;
-  }
+          var timestamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MM-yyyy HH:mm:ss");
 
-  getIDCop(i){
-    return this.insegnamenti[i].getInsIDCop();
-  }
+          try{
+            var templateId = DocumentApp.openByUrl(this.linkTemplate).getId();
+          }catch(e){
+            throw new Error("Non è stato possibile accedere al documento template.");
+          }
+            
+          var verbale = new Verbale(templateId, timestamp, this.activeSheetName);
+          verbale.replaceAll();
 
-  getDescrizioneCop(i){
-    return this.insegnamenti[i].getInsDescrizioneCop();
-  }
+          this.interface.makeOutputBox(verbale.getLink(),verbale.getName());
+          
 
-  getSSD(i){
-    return this.insegnamenti[i].getInsSSD();
-  }
+        }else{SpreadsheetApp.getUi().alert('ATTENZIONE!\nAvviare la funzione da un foglio contenente "ValutazioneCandidati" nel nome.')}
+      }else{SpreadsheetApp.getUi().alert("ATTENZIONE!\nInserire un URL valido.")}
+    }else{SpreadsheetApp.getUi().alert("ATTENZIONE!\nInserire un URL valido.")}
 
-  getOreLezione(i){
-    return this.insegnamenti[i].getInsOreLezione();
-  }
-
-  getInsegnamentiLenght(){
-    return this.insegnamenti.length;
-  }
-
-  getCriteri(i){
-    return this.criteri[i][1].toString();
-  }
-
-  getCriteriLenght(){
-    return this.criteri.length;
-  }
-
-  getPMax(){
-    return this.pMax;
-  }
-
-  getPMin(){
-    return this.pMin;
-  }
-
-  getNomeC(i){
-    return this.commissione[i].getNomeC();
-  }
-
-  getTitoloC(i){
-    return this.commissione[i].getTitoloC();
-  }
-
-  getRuoloC(i){
-    return this.commissione[i].getRuoloC();
-  }
-
-  getCandidato(i){
-    return this.candidati[i];
-  }
-
-  getCandidatiLenght(){
-    return this.candidati.length;
-  }
-
-  getCommissione(i){
-    return this.commissione[i];
-  }
-
-  getCommissioneLenght(){
-    return this.commissione.length;
-  }
-
-  getSegretario(){
-    return this.segretario;
-  }
-
-  getPresidente(){
-    return this.presidente;
   }
 }
 
-//classe che crea e scrive il verbale
-class Doc{
+class Verbale{
 
-  //crea il verbale ed estrae le informazioni dai fogli
-  constructor(){
-    this.dataCorrente = new Date();
-    this.timestamp = Utilities.formatDate(this.dataCorrente, Session.getScriptTimeZone(), "dd-MM-yyyy HH:mm:ss");
-    this.doc = DocumentApp.create("Verbale "+this.timestamp);
-    this.dati = new DatiVerbale();
+  constructor(templateId, timestamp, sheetVC){
+    this.verbaleId = DriveApp.getFileById(templateId).makeCopy("Verbale " + timestamp).getId();
+    this.body = DocumentApp.openById(this.verbaleId).getBody();
+    this.sheetVC = sheetVC;
   }
 
-  //scrive il verbale
-  fillDoc(){
-    this.body = this.doc.getBody();
-    this.body.setMarginLeft(28);
-    this.body.setMarginRight(28);
-    this.body.setMarginTop(28);
+  getLink(){
+    return DocumentApp.openById(this.verbaleId).getUrl();
+  }
 
-    //tabella firme
-    this.firme = [];
-    for(i=0; i < this.dati.getCommissioneLenght(); i++){
-      this.firme.push([this.dati.getNomeC(i)+'\n', 'Firmato digitalmente\n'])
+  getName(){
+    return DocumentApp.openById(this.verbaleId).getName();
+  }
+
+  replaceAll(){
+    try{
+      this.replaceDatiVerbale();
+      this.replaceCommissione();
+      this.replaceElencoPunteggi();
+      this.replaceElencoInsegnamenti();
+    }catch(e){
+      //in caso di errore durante la scrittura, cestina il documento
+      DriveApp.getFileById(this.verbaleId).setTrashed(true);
+      throw e;
     }
-    
-    this.titolo = "SELEZIONE PUBBLICA, PER TITOLI, PER IL CONFERIMENTO DI INCARICHI DI INSEGNAMENTO PER IL CORSO DI LAUREA IN "+ this.dati.getCDS().toUpperCase() +" PRESSO IL DIPARTIMENTO DI INGEGNERIA (AVVISO AFFISSO ALL'ALBO DELL'UNIVERSITÀ DEGLI STUDI DI FERRARA IL "+ this.dati.getDataAffissione().toUpperCase()+")";
-    this.body.insertParagraph(0,this.titolo).setAttributes(stileTitolo);
+  }
 
-    this.st = "\nIl giorno "+this.dati.getGiorno()+" alle ore "+this.dati.getOraInizio()+" presso il Dipartimento di Ingegneria si è riunita la Commissione giudicatrice della selezione pubblica per titolo per il conferimento di incarichi degli incarichi di insegnamento del Corso di laurea in "+this.dati.getCDS()+" (presso il Dipartimento di Ingegneria, avviso affisso all'Albo dell'Università degli studi di Ferrara il "+this.dati.getDataAffissione()+") così composta:";
-    this.body.appendParagraph(this.st).setAttributes(stileBody);
+  replaceDatiVerbale(){
+    try{
+      var sheet = new SheetDatiVerbale();
 
-    this.comm = "";
-    for(i=0; i < this.dati.getCommissioneLenght(); i++){
-      this.comm = this.comm + "\n"+ this.dati.getNomeC(i) +",  "+ this.dati.getTitoloC(i) +" presso l'Università di Ferrara";
-    }
-    this.body.appendParagraph(this.comm).setAttributes(stileBody);
+      var datiVerbale = sheet.getDatiVerbale();
+      
+      this.replacePlaceholder(datiVerbale);
+    }catch(e){throw e;} 
+  }
 
-    this.st = "\nÈ stato designato Presidente: " + this.dati.getPresidente() +
-    "\nLe funzioni di Segretario sono state assunte da " + this.dati.getSegretario() +
-    "\n\nLa Commissione, presa visione dell’avviso, prende atto che costituiscono titoli preferenziali per il conferimento dell’incarico di insegnamento il possesso del titolo di dottore di ricerca, della specializzazione medica, dell’abilitazione, ovvero di titoli equivalenti conseguiti all’estero e che l’avviso prevede che i titoli valutabili siano i seguenti:\n";
-    this.body.appendParagraph(this.st).setAttributes(stileBody);
+  replaceCommissione(){
+    try{
+      const sheet = new SheetCommissione();
 
-    //elenca i criteri principali
-    this.titCriteri = [];
-    this.t = 0;
-    this.st = '';
-    for(i = 3; i < this.dati.getCriteriLenght(); i++){
-      if(this.dati.getCriteri(i)[0] !== ' ' && this.dati.getCriteri(i)[0] !== undefined){
-        this.st = this.st + this.dati.getCriteri(i) + "\n";
-        this.titCriteri[this.t] = this.dati.getCriteri(i).toString();
-        this.t++;
-      }
-    }
-    this.body.appendParagraph(this.st).setAttributes(stileBody);
-
-    this.st = "\nAlla valutazione dei titoli sono riservati "+this.dati.getPMax()+" punti. Gli incarichi sono conferiti, entro il numero di quelli messi a selezione, ai candidati che abbiano conseguito almeno "+this.dati.getPMin()+" dei "+this.dati.getPMax()+" punti complessivamente a disposizione secondo l'ordine della graduatoria stessa.\n"+
-    "\nI criteri definiti dalla Commissione per l'attribuzione dei punteggi per i titoli sono indicati nell’Allegato 1 al presente verbale che ne costituisce parte integrante e sostanziale.\n";
-    this.body.appendParagraph(this.st).setAttributes(stileBody);
-
-    for(h = 0; h < this.dati.getInsegnamentiLenght(); h++){
-
-      this.st = "\nLa Commissione ha preso a questo punto in esame attraverso la piattaforma PICA le domande dei candidati per l’insegnamento di:\n"+
-      "\nID_Copertura: "+this.dati.getIDCop(h)+
-      "\nDescrizione copertura: "+this.dati.getDescrizioneCop(h)+
-      "\nCorso di studio: "+this.dati.getCDS()+
-      "\nPartizione studenti:"+
-      "\nSSD: "+this.dati.getSSD(h)+
-      "\nOre lezione: "+this.dati.getOreLezione(h)+
-      "\nI candidati iscritti risultano essere:\n";
-      this.body.appendParagraph(this.st).setAttributes(stileBody);
-
-
-      //elenca i candidati
-      for(i = 0; i < this.dati.getCandidatiLenght(); i++){
-        if(this.dati.getCandidato(i).getInsegnamento().toUpperCase() === this.dati.getDescrizioneCop(h).toUpperCase()){
-          this.body.appendListItem(this.dati.getCandidato(i).getNome()).setGlyphType(DocumentApp.GlyphType.NUMBER);
+      var paragraphsId = [], paragraphs = [];
+      var allPar = this.body.getParagraphs();
+      for(var i in allPar){
+        if(allPar[i].getText().toString().includes("«NomeCommissario»") && allPar[i].getParent().getType() === DocumentApp.ElementType.BODY_SECTION){
+          paragraphsId.push(this.body.getChildIndex(allPar[i]));
+          paragraphs.push(allPar[i].copy());
         }
       }
 
-      this.st = "\nLa Commissione ha constatato l'assenza tra i suoi membri e tra questi ed i concorrenti dell'incompatibilità di cui al secondo comma dell'art.5 del D.L. 7.5.1948, n.1172. Ognuno dei membri dichiara, altresì, che non sussistono le cause di astensione di cui all'art. 51 c.p.c.\n"+
-      "\nLa Commissione ha quindi proceduto alla valutazione dei curricula prodotti dai candidati in conformità ai criteri sopra definiti."+
-      "\nÈ stato quindi assegnato a ciascun concorrente il seguente punteggio:";
-      this.body.appendParagraph(this.st).setAttributes(stileBody);
-
-
-      //array dei sufficienti
-      this.suf = [];
+      var allTabs = this.body.getTables();
+      var tables = [], tRow = [];
+      for( var j in allTabs){
+        if(allTabs[j].findText('«NomeCommissario»')){
+          tables.push(allTabs[j]);
+          tRow.push(allTabs[j].findText('«NomeCommissario»').getElement().getParent().getParent().getParent().copy());
+        }
+      }
       
-      //elenco delle tabelle
-      for(i = 0; i < this.dati.getCandidatiLenght(); i++){
+      var commissione = sheet.getCommissione();
 
-        if(this.dati.getCandidato(i).getInsegnamento().toUpperCase() === this.dati.getDescrizioneCop(h).toUpperCase()){
+      //per ogni commissario
+      for(var i = 0; i < commissione.length; i++){
+        
+        this.replacePlaceholder(commissione[i]);
 
-          //check se è sufficiente
-          if(this.dati.getCandidato(i).getPunteggioTot() > (this.dati.getPMin()-1)){
-            this.suf.push(this.dati.getCandidato(i).getNome());
+        if(i < commissione.length - 1){
+          for(var j in paragraphsId){
+            paragraphsId[j]++;
+            this.body.insertParagraph(paragraphsId[j], paragraphs[j].copy());
           }
-
-          this.st = "\n- Dott. "+ this.dati.getCandidato(i).getNome()+" complessivi punti  "+ this.dati.getCandidato(i).getPunteggioTot() +"/"+this.dati.getPMax()+" di cui:\n";
-
-          this.body.appendParagraph(this.st).setAttributes(stileBody);
-
-          //crea tabella
-          this.tabella = [
-          ['Categoria titoli', 'Titolo presentato', 'Punteggio']];
-
-          for(j = 0; j < this.titCriteri.length; j++){
-            this.tabella.push([this.titCriteri[j][0],this.titCriteri[j],this.dati.getCandidato(i).getTotCriterio(j)]);
-          }
-
-          this.tabella.push(['','TOTALE',this.dati.getCandidato(i).getPunteggioTot()]);
-
-          this.tab = this.body.appendTable(this.tabella).setAttributes(stileTab);
-
-
-          //sistema padding e altro
-          this.tab.setColumnWidth(0,70).setColumnWidth(1,150).setColumnWidth(2,70);
           
-          this.rows = this.tab.getNumRows();
-          this.cols = this.tab.getChild(0).asTableRow().getNumChildren();
+          for( var j in tables){
+            tables[j].appendTableRow(tRow[j].copy());
+          }
+        }
+      }
+      
+      var ruoli = sheet.getRuoli();
 
-          for(j = 0 ; j < this.rows; j++)
-          {
-            for(k = 0; k < this.cols; k++)
-            {
-              this.tab.getCell(j,k).setPaddingBottom(0).setPaddingTop(0);
-            }      
+      this.replacePlaceholder(ruoli);
+
+    }catch(e){throw e}
+  }
+
+  replaceElencoPunteggi(){
+    try{
+      var sheet = new SheetCriteri();
+
+      this.replacePlaceholder(sheet.getPuntMaxMin());
+
+      var titoloCriterioId = this.body.getChildIndex(this.body.findText("«TitoloCriterio»").getElement().getParent());
+      var titoloCriterioParagraph = this.body.getChild(titoloCriterioId).asParagraph().copy();
+
+      var macroCritParagraph = this.body.findText("«MacroCriterio»").getElement().getParent().asParagraph().copy();
+      var critParagraph = this.body.findText("«Criterio»").getElement().getParent().asListItem().copy();
+      var subCritParagraph = this.body.findText("«SubCriterio»").getElement().getParent().asParagraph().copy();
+      var critId = this.body.getChildIndex(this.body.findText("«Criterio»").getElement().getParent());
+
+      this.body.removeChild(this.body.findText("«MacroCriterio»").getElement().getParent());
+      this.body.removeChild(this.body.findText("«Criterio»").getElement().getParent());
+      this.body.removeChild(this.body.findText("«SubCriterio»").getElement().getParent());
+
+      var criteri = sheet.getAllCriteri();
+
+      for(var i = 0; i < criteri.length; i++){ 
+
+        if(i === 0){
+
+          this.body.insertParagraph(critId - 1, macroCritParagraph.copy());
+          this.replacePlaceholder(criteri[i]);
+
+        }else if(criteri[i].Tipo === "Macro"){
+
+          titoloCriterioId++;
+
+          this.body.insertParagraph(critId - 1, macroCritParagraph.copy());
+          this.body.insertParagraph(titoloCriterioId , titoloCriterioParagraph.copy());
+          this.replacePlaceholder(criteri[i]);
+
+          critId++;
+
+        }else if(criteri[i].Tipo === "Vuoto"){
+
+          this.body.insertParagraph(critId, "\n")
+          critId+= 2;
+
+        }else{
+
+          if(criteri[i].Tipo === "Sub"){
+            this.body.insertParagraph(critId, subCritParagraph.copy())
+            this.replacePlaceholder(criteri[i]);
+          }else{
+            if(criteri[i].PuntiCriterio === ""){
+              this.body.insertListItem(critId, critParagraph.copy().replaceText('punti', ''));
+            }else{
+              this.body.insertListItem(critId, critParagraph.copy());
+            }
+            
+            this.replacePlaceholder(criteri[i]); 
+          }
+          critId++;
+
+        }
+
+      }
+    }catch(e){throw e;}
+  }
+
+
+  replaceElencoInsegnamenti(){
+    try{
+      var sheet = new SheetInsegnamenti();
+      var insegnamenti = sheet.getInsegnamenti();
+      
+      var insParagraph = [];
+      var idInizio = this.body.getChildIndex(this.body.findText("«INIZIO»").getElement().getParent());
+      var idFine = this.body.getChildIndex(this.body.findText("«FINE»").getElement().getParent());
+      var insegnamentoId = idInizio + 1;
+      
+      while(insegnamentoId !== idFine){
+        insParagraph.push(this.body.getChild(insegnamentoId).copy());
+        insegnamentoId++;
+      }
+
+      this.body.removeChild(this.body.getChild(idFine));
+      this.body.removeChild(this.body.getChild(idInizio));
+      insegnamentoId--;
+
+      //per ogni insegnamento
+      for(var i = 0; i < insegnamenti.length; i++){
+
+        this.replacePlaceholder(insegnamenti[i]);
+        
+        insegnamentoId = this.replaceValutazioneCandidati(insegnamenti[i].DescrizioneCopertura, insegnamentoId);
+
+        if(i < insegnamenti.length - 1){        
+          for(var t in insParagraph){
+
+            if(insParagraph[t].getType() === DocumentApp.ElementType.PARAGRAPH){
+              this.body.insertParagraph(insegnamentoId , insParagraph[t].asParagraph().copy());
+            }else if(insParagraph[t].getType() === DocumentApp.ElementType.LIST_ITEM){
+              this.body.insertListItem(insegnamentoId , insParagraph[t].asListItem().copy());
+            }else if(insParagraph[t].getType() === DocumentApp.ElementType.TABLE){
+              this.body.insertTable(insegnamentoId , insParagraph[t].asTable().copy());
+            }
+
+            insegnamentoId++;
           }
         }
         
       }
+    }catch(e){throw e;}
+  }
 
-      this.st = "\nI candidati che hanno ottenuto un punteggio uguale o superiore a "+this.dati.getPMin()+"/"+this.dati.getPMax()+" sono quindi (in ordine alfabetico):\n";
-      this.body.appendParagraph(this.st).setAttributes(stileBody);
+  replaceValutazioneCandidati(insegnamento, insegnamentoId){
+    try{
+      var sheet = new SheetValutazioneCandidati(this.sheetVC);
+      var candiati = sheet.getCandidati(insegnamento);
 
-      //elenca i sufficienti in ordine
-      this.suf.sort();
-      for(i=0; i < this.suf.length; i++){
-        this.st = "- " + this.suf[i];
-        this.body.appendParagraph(this.st).setAttributes(stileBody);
+      var sheetPunti = new SheetCriteri();
+      var datiPunteggi = sheetPunti.getValoriPerTabella()
+
+      var sufficienti = sheet.getSufficienti(candiati, datiPunteggi.Pmin);
+
+
+      var candParagraph = [], candId = [];
+
+      while(this.body.findText('«NomeCandidato»')){
+        candId.push(this.body.getChildIndex(this.body.findText("«NomeCandidato»").getElement().getParent()) + candId.length);
+        candParagraph.push(this.body.findText("«NomeCandidato»").getElement().getParent().copy());
+        this.body.removeChild(this.body.findText("«NomeCandidato»").getElement().getParent());
       }
-    }
-    
 
-    this.st = "\n\nIl risultato della valutazione dei titoli viene inviato al Direttore di Dipartimento per l’approvazione della graduatoria in Consiglio e la successiva pubblicazione sul sito web del Dipartimento.\n"+
-    "\nLa riunione ha avuto termine alle ore _________________\n";
-    this.body.appendParagraph(this.st).setAttributes(stileBody);
-
-    this.st = "\nLA COMMISSIONE\n\n";
-    this.body.appendParagraph(this.st).setAttributes(stileBody).setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-    this.tab1 = this.body.appendTable(this.firme).setAttributes(stileTab).setBorderColor('#FFFFFF');
-
-    //sistemo l'allinemaneto della tabella firme
-    this.rows = this.tab1.getNumRows();
-    this.cols = this.tab1.getChild(0).asTableRow().getNumChildren();
-
-    for(j = 0 ; j < this.rows; j++)
-    {
-      for(k = 0; k < this.cols; k++)
-      {
-        this.tab1.getCell(j,k).getChild(0).setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-      }      
-    }
-
-    this.body.appendPageBreak();
+      var tabCand = this.body.findText("«Lettera»").getElement().getParent().getParent().getParentTable().copy();
+      var tabRow = tabCand.getRow(1).copy();
+      this.body.removeChild(this.body.findText("«Lettera»").getElement().getParent().getParent().getParentTable());
 
 
 
 
-    //seconda pagina
-    this.body.appendParagraph(this.titolo).setAttributes(stileTitolo);
+      for(var i = 0; i < candiati.length; i++){
 
-    this.st = "\nALLEGATO 1 - CRITERI DI VALUTAZIONE";
-    this.body.appendParagraph(this.st).setAttributes(stileTitolo).setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+        for(var t in candParagraph){
+          if(candParagraph[t].getType() === DocumentApp.ElementType.LIST_ITEM){
+            this.body.insertListItem(candId[t], candParagraph[t].copy());
+          }else{
+            this.body.insertParagraph(candId[t], candParagraph[t].copy());
+          }
+          candId[t]++;
+          candId[t]+= parseInt(t);
+          insegnamentoId++;
+        }
 
-    this.st = "\n\nDopo ampia ed approfondita discussione, la Commissione giudicatrice della procedura di selezione per il conferimento degli incarichi di insegnamento del Corso di laurea in "+this.dati.getCDS()+" presso il Dipartimento di Ingegneria così composta:\n"+ this.comm +
-    "\ndelibera l'attribuzione dei punteggi per i titoli con i seguenti criteri:\n";
-    this.body.appendParagraph(this.st).setAttributes(stileBody);
+        var tabella = this.body.insertTable(candId[t], tabCand.copy());
+        candId[t]+=2;
+        this.body.insertParagraph(candId[t], "");
+        candId[t]++;
+        insegnamentoId++;
 
-    //elenca i criteri in dettaglio
-    for(i = 3; i < this.dati.getCriteriLenght(); i++){
-      this.body.appendParagraph(this.dati.getCriteri(i)).setAttributes(stileBody);
-    }
+        this.replacePlaceholder(candiati[i]);
 
-    this.st = "\n\nLA COMMISSIONE\n\n";
-    this.body.appendParagraph(this.st).setAttributes(stileBody).setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-    this.tab2 = this.body.appendTable(this.firme).setAttributes(stileTab).setBorderColor('#FFFFFF');
+        //inserisco dati tabella
 
-    //sistemo l'allinemaneto della tabella firme
-    this.rows = this.tab2.getNumRows();
-    this.cols = this.tab2.getChild(0).asTableRow().getNumChildren();
+        var punteggi = sheet.getPunteggiCandidato(candiati[i].NomeCandidato);
+        
+        var f = 2
+        for(var t in datiPunteggi['TitoliCriteri']){
+          var riga = {
+            Lettera: datiPunteggi['LettereCriteri'][t],
+            Titolo: datiPunteggi['TitoliCriteri'][t],
+            Punti: punteggi[t]
+          }
+          this.replacePlaceholder(riga);
 
-    for(j = 0 ; j < this.rows; j++)
-    {
-      for(k = 0; k < this.cols; k++)
-      {
-        this.tab2.getCell(j,k).getChild(0).setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-      }      
-    }
+          if(t < datiPunteggi['TitoliCriteri'].length -1){
+            tabella.insertTableRow(f, tabRow.copy());
+            f++;
+          }
+        }
+      }
 
-    this.body.appendPageBreak();
+      //sufficienti
+      var suffParagraph = this.body.findText("«CandidatoSuff»").getElement().getParent().copy();
+      var suffId = this.body.getChildIndex(this.body.findText("«CandidatoSuff»").getElement().getParent());
+      this.body.removeChild(this.body.findText("«CandidatoSuff»").getElement().getParent());
+      insegnamentoId--;
+      
+      for(var j in sufficienti){
+        this.body.insertParagraph(suffId, suffParagraph.copy())
+        this.replacePlaceholder(sufficienti[j]);
+        suffId++;
+        insegnamentoId++;
+      }
 
-
-
-    //terza pagina
-    this.body.appendParagraph(this.titolo).setAttributes(stileTitolo);
-
-    this.st = "\n\nIl/La sottoscritt_, Prof./Prof.ssa ______________________, componente della commissione giudicatrice della selezione pubblica, per titoli, per il conferimento di incarichi di insegnamento per il corso di laurea in  "+this.dati.getCDS()+" presso il Dipartimento di Ingegneria (avviso affisso all'albo dell'università degli studi di Ferrara il "+this.dati.getDataAffissione()+") dichiara di aver partecipato, per via telematica, alla seduta della Commissione del "+this.dati.getGiorno()+".\n"+
-    "\nDichiara inoltre di concordare con il verbale a firma degli altri membri della Commissione.\n"+
-    "\n\n_____________, lì  " + this.dati.getGiorno() + "\n";
-    this.body.appendParagraph(this.st).setAttributes(stileBody);
-
-    this.st = "_______________________";
-    this.body.appendParagraph(this.st).setAttributes(stileBody).setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+      return insegnamentoId;
+    }catch(e){throw e;}
   }
 
-  getDocUrl(){
-    return this.doc.getUrl();
-  }
-
-  getDocName(){
-    return this.doc.getName();
+  //rimpiazza i tag nel documento
+  replacePlaceholder(replacements){
+    for (var key in replacements) {
+      this.body.replaceText("«" + key + "»", replacements[key]);
+    }
   }
 }
 
+class Sheet{
 
-function genereVerbale(){
+  constructor(sheetName){
 
-  if(SpreadsheetApp.getActiveSpreadsheet().getActiveSheet().getName().match('ValutazioneCandidati')){
-    let d = new Doc();
-  d.fillDoc();
+    try{
+      this.sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
+      
+      if (!this.sheet){
+        throw new Error("Il file specificato non esiste o non è accessibile.");
+      }
+    }catch (e){
+      throw new Error("Non è stato possibile accedere al file " + sheetName + ". Controlla il nome del file e riprova."); 
+    }
+  }
 
-  //crea box con link cliccabile
-  let link = d.getDocUrl();
-  var desc = d.getDocName();
-  var html=Utilities.formatString('<style>input{margin: 3px 0;}</style><h3>%s</h3><a href="%s" target="_blank">%s</a><br />','Link del verbale:',link,desc);
-  var userInterface=HtmlService.createHtmlOutput(html);
-  SpreadsheetApp.getUi().showModelessDialog(userInterface, "Verbale creato");
-
-  }else{
-    Browser.msgBox("Eseguire lo script su un foglio ValutazioneCandidati");
+  getData(){
+    if(!this.sheet){
+      throw new Error("Il foglio non è stato inizializzato correttamente.");
+    }
+    
+    return this.sheet.getDataRange().getDisplayValues();
   }
   
+}
+
+class SheetDatiVerbale extends Sheet{
+
+  constructor(){
+    super('DatiVerbale');
+    this.head = null;
+    this.data = null;
+    this.initialize();
+  }
+
+  initialize(){
+    var rawData = this.getData();
+    this.head = rawData.shift();
+    this.data = rawData;
+    
+    if(this.head.toString() === "" || this.data.toString() === ""){
+      throw new Error("Assenza di dati nel foglio DatiVerbale.")
+    }
+  }
+
+  getDatiVerbale(){
+    var datiVerbale = {};
+    for( var j in this.head){
+      datiVerbale[this.head[j].toString()] = this.data[0][j].toString();
+      datiVerbale[this.head[j].toString().toUpperCase()] = this.data[0][j].toString().toUpperCase();
+    }
+    return datiVerbale;
+  }
+
+  getTemplateUrl(){
+    if(!this.head.includes('templateURL')){
+      throw new Error("Manca voce 'templateURL' nel foglio DatiVerbale.");
+    }else{
+      var url = this.data[0][this.head.indexOf('templateURL')].toString();
+      return url;
+    }
+  }
+}
+
+class SheetCommissione extends Sheet{
+
+  constructor(){
+    super('Commissione');
+    this.head = null;
+    this.data = null;
+    this.presidente = "DA INSERIRE";
+    this.segretario = "DA INSERIRE";
+    this.initialize();
+  }
+
+  initialize(){
+    var rawData = this.getData();
+    this.head = rawData.shift();
+    this.data = rawData;
+
+    if(this.head.toString() === "" || this.data.toString() === ""){
+      throw new Error("Assenza di dati nel foglio Commissione.")
+    }
+  }
+
+  getCommissione(){
+    var commissione = [];
+    for(var i = 0; i < this.data.length; i++){
+      commissione.push(this.getCommissario(i));
+    }
+    return commissione;
+  }
+
+  getCommissario(i){
+    var commissario = {};
+    for(var j in this.head){
+      commissario[this.head[j].toString()] = this.data[i][j].toString();
+    }
+    
+    return commissario;
+  }
+
+  getRuoli(){
+    if(!this.head.includes("Ruolo")){
+      return new Error("Manca la voce 'Ruolo' nel foglio Commissione.")
+    }else{
+
+      for(var j in this.head){
+        if(this.data[j][this.head.indexOf("Ruolo")].toString() === "Segretario"){
+          this.segretario = this.data[j][this.head.indexOf("NomeCommissario")].toString()
+        }else if(this.data[j][this.head.indexOf("Ruolo")].toString() === "Presidente"){
+          this.presidente = this.data[j][this.head.indexOf("NomeCommissario")].toString()
+        }
+      }
+
+      var ruoli = {Presidente: this.presidente, Segretario: this.segretario};
+      return ruoli;
+    }
+  }
+}
+
+class SheetCriteri extends Sheet{
+
+  constructor(){
+    super('TabellaPunteggi');
+    this.max = 0;
+    this.min = 0;
+    this.head = null;
+    this.data = null;
+    this.initialize();
+  }
+
+  initialize(){
+    var rawData = this.getData();
+    this.max = rawData.shift()[1];
+    this.min = rawData.shift()[1];
+    this.head = rawData.shift();
+    this.data = rawData;
+    
+    if(this.max.toString() === "" || this.min.toString() === "" || this.head.toString() === "" || this.data.toString() === ""){
+      throw new Error("Assenza di dati nel foglio ElencoInsegnamenti.")
+    }
+  }
+
+  getAllCriteri(){
+
+    if(!this.head.includes('PUNTI')){
+      throw new Error("Manca la voce 'PUNTI' nel foglio TabellaPunteggi.");
+    }else if(!this.head.includes('CRITERIO')){
+      throw new Error("Manca la voce 'CRITERIO' nel foglio TabellaPunteggi.");
+    }
+
+    var criteri = [];
+    for(var i = 0; i < this.data.length; i++){
+      criteri.push(this.getCriterio(i))
+    }
+    return criteri;
+  }
+
+  getCriterio(i){
+    var criterio = {};
+    
+    criterio['PuntiCriterio'] = this.data[i][this.head.indexOf('PUNTI')];
+
+    //se è un macro criterio
+    if(i === 0){
+      criterio['Tipo'] = "Macro";
+      criterio['TitoloCriterio'] = this.data[i][this.head.indexOf('CRITERIO')];
+      criterio['MacroCriterio'] = this.data[i][this.head.indexOf('CRITERIO')];
+    }else if(this.data[i-1][this.head.indexOf('CRITERIO')].toString() === ""){
+      criterio['Tipo'] = "Macro";
+      criterio['TitoloCriterio'] = this.data[i][this.head.indexOf('CRITERIO')];
+      criterio['MacroCriterio'] = this.data[i][this.head.indexOf('CRITERIO')];
+
+    //se è una casella vuota
+    }else if(this.data[i][this.head.indexOf('CRITERIO')].toString() === ""){
+      criterio['Tipo'] = "Vuoto"
+    }else{
+
+      //se è un sub criterio
+      if(this.data[i][this.head.indexOf('FORMULA')].toString() === ''){
+        criterio['Tipo'] = "Sub"
+        criterio['SubCriterio'] = this.data[i][this.head.indexOf('CRITERIO')];
+        
+      //se è un criterio
+      }else{
+        criterio['Tipo'] = "Normale"
+        criterio['Criterio'] = this.data[i][this.head.indexOf('CRITERIO')];
+      }
+    }
+    return criterio;
+  }
+
+  getPuntMaxMin(){
+    var p = {
+      Pmax: this.max,
+      Pmin: this.min
+    }
+    return p;
+  }
+
+  getValoriPerTabella(){
+    var titoliCriteri = [], lettereCriteri = [];
+
+    for(var i = 0; i < this.data.length; i++){
+      if(i === 0){
+        titoliCriteri.push(this.data[i][this.head.indexOf('CRITERIO')].toString().substring(4));
+        lettereCriteri.push(this.data[i][this.head.indexOf('CRITERIO')][0]);
+      }else if(this.data[i-1][this.head.indexOf('CRITERIO')].toString() === ""){
+        titoliCriteri.push(this.data[i][this.head.indexOf('CRITERIO')].toString().substring(4));
+        lettereCriteri.push(this.data[i][this.head.indexOf('CRITERIO')][0]);
+      } 
+    }
+
+    var valoriPerTabella = {TitoliCriteri: titoliCriteri, LettereCriteri: lettereCriteri, Pmin: this.min}
+    return valoriPerTabella;
+  }
+}
+
+class SheetInsegnamenti extends Sheet{
+
+  constructor(){
+    super('ElencoInsegnamenti');
+    this.head = null;
+    this.data = null;
+    this.initialize();
+  }
+
+  initialize(){
+    var rawData = this.getData();
+    this.head = rawData.shift();
+    this.data = rawData;
+    
+    if(this.head.toString() === "" || this.data.toString() === ""){
+      throw new Error("Assenza di dati nel foglio ElencoInsegnamenti.")
+    }
+  }
+
+  getInsegnamenti(){
+    var insegnamenti = [];
+    for(var i = 0; i < this.data.length; i++){
+      insegnamenti.push(this.getInsegnamento(i));
+    }
+    return insegnamenti;
+  }
+
+  getInsegnamento(i){
+    var insegnamento = {};
+    for(var j in this.head){
+      insegnamento[this.head[j].toString()] = this.data[i][j].toString();
+    }
+    return insegnamento;
+  }
+
+}
+
+class SheetValutazioneCandidati extends Sheet{
+
+  constructor(ValutazioneCandidati){
+    super(ValutazioneCandidati);
+    this.head = null;
+    this.data = null;
+    this.initialize();
+  }
+
+  initialize(){
+    var rawData = this.getData();
+    this.head = rawData.shift();
+    this.data = rawData;
+    
+    if(this.head.toString() === "" || this.data.toString() === ""){
+      throw new Error("Assenza di dati nel foglio ValutazioneCandidati scelto.")
+    }
+  }
+
+  getCandidati(insegnamento){
+    if(!this.head.includes('Insegnamento')){
+      throw new Error("Manca la voce 'Insegnamento' nel foglio ValutazioneCandidati scelto.");
+    }else{
+      var candidati = [];
+      for(var i = 0; i < this.data.length; i++){
+        if(this.data[i][this.head.indexOf('Insegnamento')].toString() === insegnamento){
+          candidati.push(this.getCandidato(i));
+        }
+      }
+      return candidati;
+    }
+  }
+
+  getCandidato(i){
+    var candidato = {};
+    for(var j in this.head){
+      candidato[this.head[j].toString()] = this.data[i][j].toString();
+    }
+    return candidato;
+  }
+
+  getSufficienti(candidati, pmin){
+    try{
+      var suff = [], sufficienti = [];
+      for(var i = 0; i < candidati.length; i++){
+        if(parseInt(candidati[i].PunteggioTotale) >= parseInt(pmin)){
+          suff.push(candidati[i].NomeCandidato.toString());
+        }
+      }
+
+      suff.sort();
+      for(var i = 0; i < suff.length; i++){
+        sufficienti.push({CandidatoSuff: suff[i]});
+      }
+      return sufficienti;
+
+    }catch(e){ throw new Error("Mancano alcune voci nel foglio ValutazioneCandidati scelto.")}
+  }
+  
+  getPunteggiCandidato(nomeCandidato){
+    var punteggi = [];
+    for(var j = 0; j < this.data.length; j++){
+      if(this.data[j].toString().includes(nomeCandidato)){
+        for(var i = 0; i < this.head.length; i++){
+          if(this.head[i].toString().startsWith("Tot")){
+            punteggi.push(this.data[j][i]);
+          }
+        }
+        break;
+      }
+    }
+    
+    return punteggi;
+  }
+
 }
