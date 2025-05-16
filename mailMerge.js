@@ -1,7 +1,9 @@
 function onOpen(){
   var menu = SpreadsheetApp.getUi().createMenu("Funzioni Aggiuntive");
+  menu.addItem("Genera Valutazione Candidati", "main");
   menu.addItem("Genera Verbale", "generaVerbale");
   menu.addToUi();
+
 }
 
 function generaVerbale(){
@@ -158,17 +160,27 @@ class Verbale{
 
       this.replacePlaceholder(sheet.getPuntMaxMin());
 
-      var titoloCriterioId = this.body.getChildIndex(this.body.findText("«TitoloCriterio»").getElement().getParent());
-      var titoloCriterioParagraph = this.body.getChild(titoloCriterioId).asParagraph().copy();
+      if(this.body.findText("«TitoloCriterio»")){
+        var titoloCriterioId = this.body.getChildIndex(this.body.findText("«TitoloCriterio»").getElement().getParent());
+        var titoloCriterioParagraph = this.body.getChild(titoloCriterioId).asParagraph().copy();        
+      }
 
-      var macroCritParagraph = this.body.findText("«MacroCriterio»").getElement().getParent().asParagraph().copy();
-      var critParagraph = this.body.findText("«Criterio»").getElement().getParent().asListItem().copy();
-      var subCritParagraph = this.body.findText("«SubCriterio»").getElement().getParent().asParagraph().copy();
-      var critId = this.body.getChildIndex(this.body.findText("«Criterio»").getElement().getParent());
+      
+      if(this.body.findText("«Criterio»")){
+        var critParagraph = this.body.findText("«Criterio»").getElement().getParent().asListItem().copy();
+        var critId = this.body.getChildIndex(this.body.findText("«Criterio»").getElement().getParent());
+        this.body.removeChild(this.body.findText("«Criterio»").getElement().getParent());
+        
+        if(this.body.findText("«MacroCriterio»")){
+          var macroCritParagraph = this.body.findText("«MacroCriterio»").getElement().getParent().asParagraph().copy();
+          this.body.removeChild(this.body.findText("«MacroCriterio»").getElement().getParent());
+        }
 
-      this.body.removeChild(this.body.findText("«MacroCriterio»").getElement().getParent());
-      this.body.removeChild(this.body.findText("«Criterio»").getElement().getParent());
-      this.body.removeChild(this.body.findText("«SubCriterio»").getElement().getParent());
+        if(this.body.findText("«SubCriterio»")){
+          var subCritParagraph = this.body.findText("«SubCriterio»").getElement().getParent().asParagraph().copy();
+          this.body.removeChild(this.body.findText("«SubCriterio»").getElement().getParent());
+        }
+      }
 
       var criteri = sheet.getAllCriteri();
 
@@ -197,9 +209,12 @@ class Verbale{
         }else{
 
           if(criteri[i].Tipo === "Sub"){
+
             this.body.insertParagraph(critId, subCritParagraph.copy())
             this.replacePlaceholder(criteri[i]);
+
           }else{
+
             if(criteri[i].PuntiCriterio === ""){
               this.body.insertListItem(critId, critParagraph.copy().replaceText('punti', ''));
             }else{
@@ -222,19 +237,23 @@ class Verbale{
       var sheet = new SheetInsegnamenti();
       var insegnamenti = sheet.getInsegnamenti();
       
-      var insParagraph = [];
-      var idInizio = this.body.getChildIndex(this.body.findText("«INIZIO»").getElement().getParent());
-      var idFine = this.body.getChildIndex(this.body.findText("«FINE»").getElement().getParent());
-      var insegnamentoId = idInizio + 1;
-      
-      while(insegnamentoId !== idFine){
-        insParagraph.push(this.body.getChild(insegnamentoId).copy());
-        insegnamentoId++;
-      }
+      var insParagraph = [], insegnamentoId = 0;
+      if(this.body.findText("«INIZIO»") !== null && this.body.findText("«FINE»") !== null){
 
-      this.body.removeChild(this.body.getChild(idFine));
-      this.body.removeChild(this.body.getChild(idInizio));
-      insegnamentoId--;
+        var idInizio = this.body.getChildIndex(this.body.findText("«INIZIO»").getElement().getParent());
+        var idFine = this.body.getChildIndex(this.body.findText("«FINE»").getElement().getParent());
+        insegnamentoId = idInizio + 1;
+        
+        while(insegnamentoId !== idFine){
+          insParagraph.push(this.body.getChild(insegnamentoId).copy());
+          insegnamentoId++;
+        }
+
+        this.body.removeChild(this.body.getChild(idFine));
+        this.body.removeChild(this.body.getChild(idInizio));
+        insegnamentoId--;
+      }
+      
 
       //per ogni insegnamento
       for(var i = 0; i < insegnamenti.length; i++){
@@ -242,8 +261,8 @@ class Verbale{
         this.replacePlaceholder(insegnamenti[i]);
         
         insegnamentoId = this.replaceValutazioneCandidati(insegnamenti[i].DescrizioneCopertura, insegnamentoId);
-
-        if(i < insegnamenti.length - 1){        
+        
+        if(parseInt(insParagraph.length) !== 0 && i < insegnamenti.length - 1){        
           for(var t in insParagraph){
 
             if(insParagraph[t].getType() === DocumentApp.ElementType.PARAGRAPH){
@@ -272,76 +291,86 @@ class Verbale{
 
       var sufficienti = sheet.getSufficienti(candiati, datiPunteggi.Pmin);
 
-
       var candParagraph = [], candId = [];
-
       while(this.body.findText('«NomeCandidato»')){
         candId.push(this.body.getChildIndex(this.body.findText("«NomeCandidato»").getElement().getParent()) + candId.length);
         candParagraph.push(this.body.findText("«NomeCandidato»").getElement().getParent().copy());
         this.body.removeChild(this.body.findText("«NomeCandidato»").getElement().getParent());
       }
 
-      var tabCand = this.body.findText("«Lettera»").getElement().getParent().getParent().getParentTable().copy();
-      var tabRow = tabCand.getRow(1).copy();
-      this.body.removeChild(this.body.findText("«Lettera»").getElement().getParent().getParent().getParentTable());
-
-
+      var tabCand = null;
+      if(this.body.findText("«Lettera»")){
+        tabCand = this.body.findText("«Lettera»").getElement().getParent().getParent().getParentTable().copy();
+        var f = tabCand.getChildIndex(tabCand.findText("«Lettera»").getElement().getParent().getParent().getParent());
+        var tabRow = tabCand.getChild(f).copy();
+        
+        this.body.removeChild(this.body.findText("«Lettera»").getElement().getParent().getParent().getParentTable());
+      }
+      
 
 
       for(var i = 0; i < candiati.length; i++){
 
-        for(var t in candParagraph){
-          if(candParagraph[t].getType() === DocumentApp.ElementType.LIST_ITEM){
-            this.body.insertListItem(candId[t], candParagraph[t].copy());
-          }else{
-            this.body.insertParagraph(candId[t], candParagraph[t].copy());
+        if(parseInt(candParagraph.length) !== 0){
+          for(var t in candParagraph){
+            if(candParagraph[t].getType() === DocumentApp.ElementType.LIST_ITEM){
+              this.body.insertListItem(candId[t], candParagraph[t].copy());
+            }else{
+              this.body.insertParagraph(candId[t], candParagraph[t].copy());
+            }
+            candId[t]++;
+            candId[t]+= parseInt(t);
+            insegnamentoId++;
           }
-          candId[t]++;
-          candId[t]+= parseInt(t);
-          insegnamentoId++;
         }
 
-        var tabella = this.body.insertTable(candId[t], tabCand.copy());
-        candId[t]+=2;
-        this.body.insertParagraph(candId[t], "");
-        candId[t]++;
-        insegnamentoId++;
-
+        if(tabCand !== null){
+          var tabella = this.body.insertTable(candId[t], tabCand.copy());
+          candId[t]+=2;
+          this.body.insertParagraph(candId[t], "");
+          candId[t]++;
+          insegnamentoId++;
+        }
+        
         this.replacePlaceholder(candiati[i]);
 
         //inserisco dati tabella
+        if(tabCand !== null){
+          var punteggi = sheet.getPunteggiCandidato(candiati[i].NomeCandidato);
+          var r = f;
+          
+          for(var t in datiPunteggi['TitoliCriteri']){
+            var riga = {
+              Lettera: datiPunteggi['LettereCriteri'][t],
+              Titolo: datiPunteggi['TitoliCriteri'][t],
+              Punti: punteggi[t]
+            }
+            this.replacePlaceholder(riga);
 
-        var punteggi = sheet.getPunteggiCandidato(candiati[i].NomeCandidato);
-        
-        var f = 2
-        for(var t in datiPunteggi['TitoliCriteri']){
-          var riga = {
-            Lettera: datiPunteggi['LettereCriteri'][t],
-            Titolo: datiPunteggi['TitoliCriteri'][t],
-            Punti: punteggi[t]
-          }
-          this.replacePlaceholder(riga);
-
-          if(t < datiPunteggi['TitoliCriteri'].length -1){
-            tabella.insertTableRow(f, tabRow.copy());
-            f++;
+            if(t < datiPunteggi['TitoliCriteri'].length -1){
+              r++;
+              tabella.insertTableRow(r, tabRow.copy());
+            }
           }
         }
+        
       }
 
       //sufficienti
-      var suffParagraph = this.body.findText("«CandidatoSuff»").getElement().getParent().copy();
-      var suffId = this.body.getChildIndex(this.body.findText("«CandidatoSuff»").getElement().getParent());
-      this.body.removeChild(this.body.findText("«CandidatoSuff»").getElement().getParent());
-      insegnamentoId--;
-      
-      for(var j in sufficienti){
-        this.body.insertParagraph(suffId, suffParagraph.copy())
-        this.replacePlaceholder(sufficienti[j]);
-        suffId++;
-        insegnamentoId++;
+      if(this.body.findText("«CandidatoSuff»") !== null){
+        var suffParagraph = this.body.findText("«CandidatoSuff»").getElement().getParent().copy();
+        var suffId = this.body.getChildIndex(this.body.findText("«CandidatoSuff»").getElement().getParent());
+        this.body.removeChild(this.body.findText("«CandidatoSuff»").getElement().getParent());
+        insegnamentoId--;
+        
+        for(var j in sufficienti){
+          this.body.insertParagraph(suffId, suffParagraph.copy())
+          this.replacePlaceholder(sufficienti[j]);
+          suffId++;
+          insegnamentoId++;
+        }
       }
-
+      
       return insegnamentoId;
     }catch(e){throw e;}
   }
@@ -352,6 +381,7 @@ class Verbale{
       this.body.replaceText("«" + key + "»", replacements[key]);
     }
   }
+
 }
 
 class Sheet{
@@ -608,7 +638,6 @@ class SheetInsegnamenti extends Sheet{
   }
 
 }
-
 class SheetValutazioneCandidati extends Sheet{
 
   constructor(ValutazioneCandidati){
@@ -664,7 +693,7 @@ class SheetValutazioneCandidati extends Sheet{
         sufficienti.push({CandidatoSuff: suff[i]});
       }
       return sufficienti;
-
+      
     }catch(e){ throw new Error("Mancano alcune voci nel foglio ValutazioneCandidati scelto.")}
   }
   
