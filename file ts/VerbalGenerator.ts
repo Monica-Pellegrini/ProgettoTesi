@@ -1,47 +1,44 @@
-class VerbalGenerator{
+class VerbalGenerator {
   private activeSheetName: string;
   private linkTemplate: string;
-  private interface: userInterface;
-  private input: any;
+  private interface: UserInterface;
 
-  constructor(){
+  constructor() {
     this.activeSheetName = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet().getName();
-    this.linkTemplate = "";
-    this.input = null;
-    this.initialize()
+    this.initialize();
   }
 
-  initialize(): void{
-    this.interface = new userInterface();
-    this.input = this.interface.makeInputBox();
-    this.linkTemplate = this.input.Url;
+  private initialize(): void {
+    this.interface = new UserInterface();
+    const sheet: SheetDatiVerbale = new SheetDatiVerbale();
+    this.linkTemplate = sheet.getTemplateUrl();
   }
 
-  generaVerbale(): void{
-    if(this.input.Button == SpreadsheetApp.getUi().Button.OK){
-      if(this.linkTemplate !== ""){
-        if(this.linkTemplate.includes("https://docs.google.com/document/")){
-          if(this.activeSheetName.includes("ValutazioneCandidati")){
+  public generaVerbale(): void {
+    if (this.linkTemplate !== "") {
+      if (this.linkTemplate.includes("https://docs.google.com/document/")) {
+        if (this.activeSheetName.includes("ValutazioneCandidati")) {
 
-            var timestamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MM-yyyy HH:mm:ss");
-            var templateId = DocumentApp.openByUrl(this.linkTemplate).getId();
-            var verbale = new Verbale(templateId, timestamp, this.activeSheetName);
-            verbale.replaceAll();
-
-
-            this.interface.makeOutputBox(verbale.getLink(),verbale.getName());
-
-          }else{
-            SpreadsheetApp.getUi().alert('ATTENZIONE!\nAvviare la funzione da un foglio contenente "ValutazioneCandidati" nel nome.')
+          const timestamp: string = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MM-yyyy HH:mm:ss");
+          let templateId: string = "";
+          try {
+            templateId = DocumentApp.openByUrl(this.linkTemplate).getId();
+          } catch (e) {
+            throw new Error("Non è stato possibile accedere al documento template.");
           }
-        }else{
-          SpreadsheetApp.getUi().alert("ATTENZIONE!\nInserire un URL valido.")
+
+          const verbale: Verbale = new Verbale(templateId, timestamp, this.activeSheetName);
+          verbale.replaceAll();
+
+          this.interface.makeOutputBox(verbale.getLink(), verbale.getName());
+        } else {
+          SpreadsheetApp.getUi().alert('ATTENZIONE!\nAvviare la funzione da un foglio contenente "ValutazioneCandidati" nel nome.');
         }
+      } else {
+        SpreadsheetApp.getUi().alert("ATTENZIONE!\nInserire un URL valido.");
       }
-    }else{}
-
-
-
+    } else {
+      SpreadsheetApp.getUi().alert("ATTENZIONE!\nInserire un URL valido.");
+    }
   }
-
 }

@@ -3,7 +3,6 @@ function onOpen(){
   menu.addItem("Genera Valutazione Candidati", "main");
   menu.addItem("Genera Verbale", "generaVerbale");
   menu.addToUi();
-
 }
 
 function generaVerbale(){
@@ -160,24 +159,26 @@ class Verbale{
 
       this.replacePlaceholder(sheet.getPuntMaxMin());
 
+      var titoloCriterioId = 0, titoloCriterioParagraph = null;
       if(this.body.findText("«TitoloCriterio»")){
-        var titoloCriterioId = this.body.getChildIndex(this.body.findText("«TitoloCriterio»").getElement().getParent());
-        var titoloCriterioParagraph = this.body.getChild(titoloCriterioId).asParagraph().copy();        
+        titoloCriterioId = this.body.getChildIndex(this.body.findText("«TitoloCriterio»").getElement().getParent());
+        titoloCriterioParagraph = this.body.getChild(titoloCriterioId).asParagraph().copy();        
       }
 
-      
+      var critId = 1, critParagraph = null;
+      var macroCritParagraph = null, subCritParagraph = null;
       if(this.body.findText("«Criterio»")){
-        var critParagraph = this.body.findText("«Criterio»").getElement().getParent().asListItem().copy();
-        var critId = this.body.getChildIndex(this.body.findText("«Criterio»").getElement().getParent());
+        critParagraph = this.body.findText("«Criterio»").getElement().getParent().asListItem().copy();
+        critId = this.body.getChildIndex(this.body.findText("«Criterio»").getElement().getParent());
         this.body.removeChild(this.body.findText("«Criterio»").getElement().getParent());
         
         if(this.body.findText("«MacroCriterio»")){
-          var macroCritParagraph = this.body.findText("«MacroCriterio»").getElement().getParent().asParagraph().copy();
+          macroCritParagraph = this.body.findText("«MacroCriterio»").getElement().getParent().asParagraph().copy();
           this.body.removeChild(this.body.findText("«MacroCriterio»").getElement().getParent());
         }
 
         if(this.body.findText("«SubCriterio»")){
-          var subCritParagraph = this.body.findText("«SubCriterio»").getElement().getParent().asParagraph().copy();
+          subCritParagraph = this.body.findText("«SubCriterio»").getElement().getParent().asParagraph().copy();
           this.body.removeChild(this.body.findText("«SubCriterio»").getElement().getParent());
         }
       }
@@ -187,43 +188,54 @@ class Verbale{
       for(var i = 0; i < criteri.length; i++){ 
 
         if(i === 0){
-
-          this.body.insertParagraph(critId - 1, macroCritParagraph.copy());
+          
+          if(macroCritParagraph !== null){
+            this.body.insertParagraph(critId - 1, macroCritParagraph.copy());
+          }
           this.replacePlaceholder(criteri[i]);
 
         }else if(criteri[i].Tipo === "Macro"){
 
-          titoloCriterioId++;
-
-          this.body.insertParagraph(critId - 1, macroCritParagraph.copy());
-          this.body.insertParagraph(titoloCriterioId , titoloCriterioParagraph.copy());
+          if(macroCritParagraph !== null){
+            this.body.insertParagraph(critId - 1, macroCritParagraph.copy());
+            critId++;
+          }
+          if(titoloCriterioParagraph !== null){
+            titoloCriterioId++;
+            this.body.insertParagraph(titoloCriterioId , titoloCriterioParagraph.copy());
+          }
           this.replacePlaceholder(criteri[i]);
 
-          critId++;
-
         }else if(criteri[i].Tipo === "Vuoto"){
-
-          this.body.insertParagraph(critId, "\n")
-          critId+= 2;
+          
+          if(critId > 1){
+            this.body.insertParagraph(critId, "\n")
+            critId+= 2;
+          }
 
         }else{
 
           if(criteri[i].Tipo === "Sub"){
 
+            if(subCritParagraph !== null){
             this.body.insertParagraph(critId, subCritParagraph.copy())
             this.replacePlaceholder(criteri[i]);
-
-          }else{
-
-            if(criteri[i].PuntiCriterio === ""){
-              this.body.insertListItem(critId, critParagraph.copy().replaceText('punti', ''));
-            }else{
-              this.body.insertListItem(critId, critParagraph.copy());
+            critId++;
             }
             
-            this.replacePlaceholder(criteri[i]); 
+          }else{
+
+            if(critParagraph !== null){
+              if(criteri[i].PuntiCriterio === ""){
+                this.body.insertListItem(critId, critParagraph.copy().replaceText('punti', ''));
+              }else{
+                this.body.insertListItem(critId, critParagraph.copy());
+              }
+              critId++;
+              this.replacePlaceholder(criteri[i]); 
+            }
+            
           }
-          critId++;
 
         }
 
