@@ -169,7 +169,7 @@ class Verbale{
 
             if (critParagraph !== null) {
               if (criteri[i].PuntiCriterio === "") {
-                this.body.insertListItem(critId, String(critParagraph.copy().replaceText('punti', '')));
+                this.body.insertListItem(critId, critParagraph.copy().replaceText('punti', '').asListItem());
               } else {
                 this.body.insertListItem(critId, critParagraph.copy());
               }
@@ -282,7 +282,7 @@ class Verbale{
           this.body.insertParagraph(candId[j], "");
           candId[j]++;
           insegnamentoId++;
-          tab = tabella.copy();
+          tab = tabella;
         }
 
         this.replacePlaceholder(candiati[i]);
