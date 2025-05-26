@@ -24,16 +24,16 @@ class SheetCommissione extends Sheet {
     }
   }
 
-  getCommissione(): object[] {
-    const commissione: object[] = [];
+  getCommissione(): Array<Record<string, string>> {
+    const commissione: Array<Record<string, string>> = [];
     for (let i = 0; i < (this.data?.length || 0); i++) {
       commissione.push(this.getCommissario(i));
     }
     return commissione;
   }
 
-  getCommissario(i: number): { [key: string]: string } {
-    const commissario: { [key: string]: string } = {};
+  getCommissario(i: number): Record<string, string> {
+    const commissario: Record<string, string> = {};
     for (let j in this.head) {
       commissario[this.head[j].toString()] = this.data[i][j].toString();
     }

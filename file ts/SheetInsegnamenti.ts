@@ -20,16 +20,16 @@ class SheetInsegnamenti extends Sheet {
     }
   }
 
-  getInsegnamenti(): object[] {
-    const insegnamenti: object[] = [];
+  getInsegnamenti(): Array<Record<string, string>> {
+    const insegnamenti: any[] = [];
     for (let i = 0; i < this.data.length; i++) {
       insegnamenti.push(this.getInsegnamento(i));
     }
     return insegnamenti;
   }
 
-  getInsegnamento(i: number): object {
-    const insegnamento: { [key: string]: string } = {};
+  getInsegnamento(i: number): Record<string, string> {
+    const insegnamento: Record<string, string> = {};
     for (let j in this.head) {
       insegnamento[this.head[j].toString()] = this.data[i][j].toString();
     }

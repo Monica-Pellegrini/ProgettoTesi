@@ -3,7 +3,7 @@ class SheetValutazioneCandidati extends Sheet {
   head: string[] | null;
   data: any[] | null;
 
-  constructor(ValutazioneCandidati: any) {
+  constructor(ValutazioneCandidati: string) {
     super(ValutazioneCandidati);
     this.head = null;
     this.data = null;
@@ -20,7 +20,7 @@ class SheetValutazioneCandidati extends Sheet {
     }
   }
 
-  getCandidati(insegnamento: string): any[] {
+  getCandidati(insegnamento: string): Array<Record<string, string>> {
     if (!this.head!.toString().match('Insegnamento')) {
       throw new Error("Manca la voce 'Insegnamento' nel foglio ValutazioneCandidati scelto.");
     } else {
@@ -34,15 +34,15 @@ class SheetValutazioneCandidati extends Sheet {
     }
   }
 
-  getCandidato(i: number): { [key: string]: string } {
-    const candidato: { [key: string]: string } = {};
+  getCandidato(i: number): Record<string, string> {
+    const candidato: Record<string, string> = {};
     for (const j in this.head!) {
       candidato[this.head![j].toString()] = this.data![i][j].toString();
     }
     return candidato;
   }
 
-  getSufficienti(candidati: any[], pmin: number): { CandidatoSuff: string }[] {
+  getSufficienti(candidati: Array<Record<string, string>>, pmin: number): { CandidatoSuff: string }[] {
     try {
       const suff: string[] = [], sufficienti: { CandidatoSuff: string }[] = [];
       for (let i = 0; i < candidati.length; i++) {

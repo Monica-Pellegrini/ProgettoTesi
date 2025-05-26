@@ -45,7 +45,7 @@ class SheetCriteri extends Sheet {
 
   getCriterio(i: number): Record<string, string> {
     
-    const criterio: { [key: string]: any } = {};
+    const criterio: Record<string, string> = {};
     
     criterio['PuntiCriterio'] = this.data[i][this.head.indexOf('PUNTI')];
 

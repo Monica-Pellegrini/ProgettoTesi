@@ -1,9 +1,9 @@
 class Verbale{
   verbaleId: string;
   body: GoogleAppsScript.Document.Body;
-  sheetVC: any;
+  sheetVC: string;
 
-  constructor(templateId: string, timestamp: string, sheetVC: any) {
+  constructor(templateId: string, timestamp: string, sheetVC: string) {
     this.verbaleId = DriveApp.getFileById(templateId).makeCopy("Verbale " + timestamp).getId();
     this.body = DocumentApp.openById(this.verbaleId).getBody();
     this.sheetVC = sheetVC;
